@@ -1,6 +1,0 @@
-#adding stuff for the main makefile
-
-#API DSTRING DOC IN DOCS/API-DSTRING.TXT (If any)
-DSTRING_OBJECTS=\
-	dstring.o
-

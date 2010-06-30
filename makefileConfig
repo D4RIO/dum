@@ -1,0 +1,33 @@
+COMPILER_QUIET:=@
+UTILS_QUIET:=@
+
+
+#======================================================================
+CFLAGS= \
+	-Wall -I./ \
+	-gstabs
+CC=$(COMPILER_QUIET)gcc $(CFLAGS)
+CCMESG=$(UTILS_QUIET) echo *\ \ CC
+
+#======================================================================
+LINK=$(COMPILER_QUIET)gcc
+LINKMESG=$(UTILS_QUIET) echo *\ \ LINK
+
+#======================================================================
+MAKE=$(UTILS_QUIET)make
+MAKEMESG=$(UTILS_QUIET) echo *\ \ MAKE
+
+RM=$(UTILS_QUIET)-rm -f 
+RMMESG=$(UTILS_QUIET) echo *\ \ RM
+
+CP=$(UTILS_QUIET)cp -f
+CPMESG=$(UTILS_QUIET) echo *\ \ CP
+
+MKDIR=$(UTILS_QUIET)$(UTILS_QUIET) mkdir
+CPMESG=$(UTILS_QUIET) echo *\ \ MKDIR
+
+INSTALL=$(UTILS_QUIET)install
+INSTALLMESG=$(UTILS_QUIET) echo *\ \ INSTALLING
+
+GENMESG=$(UTILS_QUIET) echo *\ \ GENERATING
+
