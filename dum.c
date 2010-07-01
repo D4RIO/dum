@@ -201,6 +201,9 @@ int main(int argc, char **argv) {
 
 			for (j=1;j<strlen(argv[0]);j++)
 				switch (argv[0][j]) {
+					case '-':
+						dumconfig->parsing_args = 0;
+						break;
 					case 'v':
 					case 'V':
 						dumconfig->verbose = 1;
