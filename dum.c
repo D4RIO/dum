@@ -99,7 +99,7 @@ void cmdversion( int *a, char ***b ) {
 
 void cmdhelp( int *a, char ***b ) {
 
-	if ( !a && **b )
+	if ( !a && b && **b )
 		die("invalid command '%s'... see 'help', ok?", **b);
 	else
 		printf("usage:\n\n    %s\n", usage_str);
@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
 	if (argc<2)
 		cmdhelp(0,NULL);
 
-	int i,j;
+	int j;
 
 	/* Sets options global data structure
 	 * as main() stack memory.
@@ -192,12 +192,15 @@ int main(int argc, char **argv) {
 	argv++; // lost first
 	argc--;
 
-	for (i=0;i<argc;) {
+	for (;;) {
 
-		if (dumconfig->parsing_args && argv[i][0]=='-') {
+		if(!argc||!argv[0])
+			break;
 
-			for (j=1;j<strlen(argv[i]);j++)
-				switch (argv[i][j]) {
+		if (dumconfig->parsing_args && argv[0][0]=='-') {
+
+			for (j=1;j<strlen(argv[0]);j++)
+				switch (argv[0][j]) {
 					case 'v':
 					case 'V':
 						dumconfig->verbose = 1;
@@ -215,17 +218,19 @@ int main(int argc, char **argv) {
 						dumconfig->log_time = 1;
 						break;
 					default:
-						die("Bad option: %c (on %d,%s)",
-							argv[i][j],i,argv[i]);
+						die("Bad option: %c (on %s)",
+							argv[0][j],argv[0]);
 						break;
 				}
 
+			argc--;argv++;
+
 		}else{
 			/* command processing - use it just as an access to functionalities */
-			if( strlen(  argv[i]) > CMD_MAX )
+			if( strlen(  argv[0]) > CMD_MAX )
 				die("Command specified is too long, "
 				    "current limit is %d",CMD_MAX);
-			argc-=i; argv+=i;
+			//argc-=i; argv+=i;
 			execute_command( *argv,  &argc,  &argv );
 		}
 	}
