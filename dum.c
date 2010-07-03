@@ -2,6 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+/*STAT*/
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #define CMD_MAX        512
 #define TAM_LINEA      4096
 #define EOL_CR         0x0D
@@ -9,6 +14,11 @@
 #define FMT_LINEA_UNIX "%s\x0A"
 #define FMT_LINEA_MAC  "%s\x0D"
 #define FMT_LINEA_DOS  "%s\x0D\x0A"
+#define COLORFUL_BLUE  dumconfig->colorful?"\033[34m":""
+#define COLORFUL_RED   dumconfig->colorful?"\033[31m":""
+#define COLORFUL_DEF   dumconfig->colorful?"\033[0m":""
+#define COLORFUL_BOLD  dumconfig->colorful?"\033[1m":""
+#define NOVBREAK       (dumconfig->verbose&&(sum>0L))?"":"\n"
 
 #include "dstring.h"
 #include "messages.h"
@@ -23,9 +33,9 @@ static const char usage_str[]=\
 "  config commands (parsed first):\n"
 "     help             shows the help text\n"
 "     version          shows the version string for current 'dum'\n"
-"     set verbose      sets verbose mode on -same as 'v' flag-\n"
-"     set full-output  sets date/time tracing on log strings\n"
-"     set colorful     sets colorful mode on -same as 'c' flag-\n\n"
+"     verbose          sets verbose mode on -same as 'v' flag-\n"
+"     showtime         sets date/time tracing on log strings (not all output)\n"
+"     colorful         sets colorful mode on -same as 'c' flag and pretty-\n\n"
 "  'knife' commands (at the end):\n"
 "     to unix          rewrite input files using UNIX LF byte\n"
 "     to dos           rewrite input files using DOS/WINDOWS CR+LF bytes\n"
@@ -41,9 +51,15 @@ static const char usage_str[]=\
 "\n"
 "Copyright (C) 2010, Dario A. Rodriguez";
 
-void cambiar_fin_linea (char * buffer_linea);
-int analyze_file (FILE* archivo_lect);
+typedef struct nd {
+	unsigned long int cr;
+	unsigned long int lf;
+	unsigned long int crlf;
+} numeric_data;
 
+void cambiar_fin_linea (char * buffer_linea);
+int  analyze_file (FILE *file_to_read,numeric_data *totals);
+int  is_regfile (const char *fname);
 
 
 /* structure to save global configuration data, and functions --------------------------------------
@@ -54,6 +70,11 @@ typedef struct options_st {
 	unsigned char  colorful;
 	unsigned char  parsing_args;
 	unsigned char  log_time;
+	unsigned char  unix_show;
+	unsigned char  mac_show;
+	unsigned char  dos_show;
+	unsigned char  binary_show;
+	unsigned char  dummy_show;
 	FILE          *log_file;
 
 } options_st;
@@ -65,6 +86,11 @@ void options_build(options_st *ref) {
 	ref->colorful     = 0;
 	ref->parsing_args = 1;
 	ref->log_time     = 0;
+	ref->unix_show    = 1;
+	ref->mac_show     = 1;
+	ref->dos_show     = 1;
+	ref->binary_show   = 1;
+	ref->dummy_show   = 1;
 	ref->log_file     = NULL;
 }
 
@@ -73,6 +99,11 @@ void options_reset(options_st *ref) {
 	ref->colorful     = 0;
 	ref->parsing_args = 1;
 	ref->log_time     = 0;
+	ref->unix_show    = 1;
+	ref->mac_show     = 1;
+	ref->dos_show     = 1;
+	ref->binary_show   = 1;
+	ref->dummy_show   = 1;
 	ref->log_file     = NULL;
 }
 /* ---------------------------------------------------------------------------------------------- */
@@ -98,7 +129,6 @@ void cmdversion( int *a, char ***b ) {
 }
 
 void cmdhelp( int *a, char ***b ) {
-
 	if ( !a && b && **b )
 		die("invalid command '%s'... see 'help', ok?", **b);
 	else
@@ -106,32 +136,168 @@ void cmdhelp( int *a, char ***b ) {
 	exit(0);
 }
 
-void cmdset( int *a, char ***b ) {
+void cmdverbose( int *a, char ***b ) {
 
 	(*a)--;(*b)++;
-	if (!a||!*b||!**b)
-		die("invalid set usage!");
-
-	if (!strcmp(**b,"verbose")) {
-		dumconfig->verbose = 1;
-		(*a)--;(*b)++;
-	}
-
-	else if (!strcmp(**b,"colorful")) {
-		dumconfig->colorful = 1;
-		(*a)--;(*b)++;
-	}
-
-	else if (!strcmp(**b,"full-output")) {
-		dumconfig->log_time = 1;
-		(*a)--;(*b)++;
-	}
-
-	else
-		die("invalid set usage!");
+	dumconfig->verbose = 1;
 
 }
 
+void cmdcolorful( int *a, char ***b ) {
+
+	(*a)--;(*b)++;
+	dumconfig->colorful = 1;
+
+}
+
+void cmdshowtime( int *a, char ***b ) {
+
+	(*a)--;(*b)++;
+	dumconfig->log_time = 1;
+
+}
+
+void cmdanalyze( int *a, char ***b ) {
+
+	register int i;
+	FILE *fstruct;
+	numeric_data totals;
+	(*a)--;(*b)++;
+
+	if (!a||!*b||!**b)
+		die("invalid analyze usage!");
+
+	for (i=0;i<*a;i++) {
+
+		if ( ! is_regfile((*b)[i]) )
+			continue;
+
+		fstruct = fopen ((*b)[i],"r");
+
+		if (!fstruct)
+			die("I cannot open %s!\n",(*b)[i]);
+
+		/* get statistics */
+		analyze_file (fstruct,&totals);
+
+		/* print the report line*/
+		if ((totals.cr   >0L) &&
+		    (totals.lf  ==0L) &&
+		    (totals.crlf==0L) &&
+		     dumconfig->mac_show)
+			printf("%sMAC        %s %s\n",
+			       COLORFUL_BOLD,
+			       COLORFUL_DEF,
+			       (*b)[i]);
+		else if ((totals.cr  ==0L) &&
+		         (totals.lf   >0L) &&
+		         (totals.crlf==0L) &&
+		          dumconfig->unix_show)
+			printf("%sUNIX       %s %s\n",
+			       COLORFUL_BOLD,
+			       COLORFUL_DEF,
+			       (*b)[i]);
+		else if ((totals.cr  ==0L) &&
+		         (totals.lf  ==0L) &&
+		         (totals.crlf >0L) &&
+		          dumconfig->dos_show)
+			printf("%sDOS/WINDOWS%s %s\n",
+			       COLORFUL_BOLD,
+			       COLORFUL_DEF,
+			       (*b)[i]);
+		else if ((totals.cr  ==0L) &&
+		         (totals.lf  ==0L) &&
+		         (totals.crlf==0L) &&
+		          dumconfig->dummy_show)
+			printf("%sNO-ENDS    %s %s\n",
+			       COLORFUL_BOLD,
+			       COLORFUL_DEF,
+			       (*b)[i]);
+		else if (dumconfig->binary_show)
+			printf("%sBINARY     %s %s\n",
+			       COLORFUL_BOLD,
+			       COLORFUL_DEF,
+			       (*b)[i]);
+		/* end report */
+
+		fclose (fstruct);
+
+	}
+	exit(0);
+
+}
+
+void cmdshow( int *a, char ***b ) {
+
+	register int i;
+	(*a)--;(*b)++;
+
+	if (!a||!*b||!**b)
+		die("invalid show usage!");
+
+	dumconfig->unix_show   = 0;
+	dumconfig->dos_show    = 0;
+	dumconfig->mac_show    = 0;
+	dumconfig->binary_show = 0;
+	dumconfig->dummy_show  = 0;
+
+	for (i=0;i<*a;i++) {
+		if (!strcmp((*b)[i],"unix"))
+			dumconfig->unix_show = 1;
+		else if (!strcmp((*b)[i],"dos") || !strcmp((*b)[i],"windows"))
+			dumconfig->dos_show = 1;
+		else if (!strcmp((*b)[i],"mac"))
+			dumconfig->mac_show = 1;
+		else if (!strcmp((*b)[i],"bin"))
+			dumconfig->binary_show = 1;
+		else if (!strcmp((*b)[i],"dummy"))
+			dumconfig->dummy_show = 1;
+		else if (!strcmp((*b)[i],"all")) {
+			dumconfig->unix_show   = 1;
+			dumconfig->dos_show    = 1;
+			dumconfig->mac_show    = 1;
+			dumconfig->binary_show = 1;
+			dumconfig->dummy_show  = 1;
+		} else if (!strcmp((*b)[i],"endshow")) {
+			(*a)--;(*b)++;
+			return;
+		}
+		else return;
+		(*a)--;(*b)++;
+	}
+
+}
+
+/* NEXT ADD
+void cmdto( int *a, char ***b ) {
+
+	char tmp_file[4096];
+	int  app_me;
+	struct stat stbuf;
+
+	(*a)--;(*b)++;
+
+	if (!a||!*b||!**b)
+		die("invalid set usage!");
+
+	memset(tmp_file,0,4096);
+	sprintf(tmp_file,"/tmp/dumtemp%d.txt",app_me);
+
+	for (app_me=0;stat(tmp_file,&stbuf) && app_me>=0;app_me++) {
+
+		memset(tmp_file,0,4096);
+		sprintf(tmp_file,"/tmp/dumtemp%d.txt",app_me);
+
+	}
+
+	if (app_me<0)
+		die("OMG! How many temp files do you have? ... see /tmp/dumtemp*.txt");
+
+	FILE *fstruct = fopen(temporal.buffer,"w");
+	analyze_file();
+
+}
+*/
 
 
 
@@ -143,8 +309,13 @@ void cmdset( int *a, char ***b ) {
 static const struct cmdst commands[] = {
 
 	{ "help"               ,cmdhelp                },
+	{ "colorful"           ,cmdcolorful            },
+	{ "pretty"             ,cmdcolorful            },
+	{ "showtime"           ,cmdshowtime            },
 	{ "version"            ,cmdversion             },
-	{ "set"                ,cmdset                 },
+	{ "verbose"            ,cmdverbose             },
+	{ "analyze"            ,cmdanalyze             },
+	{ "show"               ,cmdshow                },
 	{ ""                   ,NULL                   }
 
 };
@@ -233,7 +404,7 @@ int main(int argc, char **argv) {
 			if( strlen(  argv[0]) > CMD_MAX )
 				die("Command specified is too long, "
 				    "current limit is %d",CMD_MAX);
-			//argc-=i; argv+=i;
+
 			execute_command( *argv,  &argc,  &argv );
 		}
 	}
@@ -256,56 +427,43 @@ void cambiar_fin_linea(char * buffer_linea) {
 }
 
 
-int analyze_file(FILE* archivo_lect) {
+int analyze_file(FILE* file_to_read,numeric_data *totals) {
 
-	char buffer_linea[TAM_LINEA];
-	memset(buffer_linea, 0, TAM_LINEA);
-	unsigned long count_crlf=0L;
-	unsigned long count_cr  =0L;
-	unsigned long count_lf  =0L;
-
+	char buffer_line[TAM_LINEA];
+	memset(buffer_line, 0, TAM_LINEA);
+	totals->crlf=0L;
+	totals->cr  =0L;
+	totals->lf  =0L;
 
 	/* read file */
-	while( fgets(buffer_linea,TAM_LINEA,archivo_lect) ){
+	while( fgets(buffer_line,TAM_LINEA,file_to_read) ){
 
 		register int i=0;
-		while( buffer_linea[i] ){
+		while( buffer_line[i] ){
 
-			if     ( buffer_linea[i]==EOL_CR && buffer_linea[i+1]==EOL_LF ) {
-				count_crlf++;
+			if     ( buffer_line[i]==EOL_CR && buffer_line[i+1]==EOL_LF ) {
+				totals->crlf++;
 				i++;
-			}else if( buffer_linea[i]==EOL_CR ){
-				count_cr++;
-			}else if( buffer_linea[i]==EOL_LF ){
-				count_lf++;
+			}else if( buffer_line[i]==EOL_CR ){
+				totals->cr++;
+			}else if( buffer_line[i]==EOL_LF ){
+				totals->lf++;
 			}
 
 			i++;
 		}
-		memset(buffer_linea,0,TAM_LINEA);
-	}
-
-	/* statistics */
-	if      (count_cr==0L && count_lf==0L && count_crlf==0L)
-		printf("NO-LINE-ENDS\n");
-	else if (count_cr==0L && count_lf==0L && count_crlf>0L)
-		printf("DOS/WINDOWS\n");
-	else if (count_cr>0L  && count_lf==0L && count_crlf==0L)
-		puts("MAC");
-	else if (count_cr==0L && count_lf>0L  && count_crlf==0L)
-		puts("UNIX");
-	else {
-		unsigned long sum=count_cr+count_lf+count_crlf;
-		puts("BIN");
-		if (dumconfig->verbose){
-			printf("Has %ld%% UNIX, %ld%% DOS/WINDOWS, %ld%%MAC line ending sequences over %ld total\n",
-		                             (count_lf*100)/sum,
-		                             (count_crlf*100)/sum,
-		                             (count_cr*100)/sum,
-		                             sum);
-		}
+		memset(buffer_line,0,TAM_LINEA);
 	}
 
 	return 0;
+}
+
+int is_regfile (const char *fname) {
+
+	struct stat stbuff;
+	if (stat(fname,&stbuff))
+		return 0;
+	return S_ISREG(stbuff.st_mode)?1:0;
+
 }
 

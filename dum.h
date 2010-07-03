@@ -20,6 +20,11 @@ typedef struct options_st {
 	unsigned char  colorful;
 	unsigned char  parsing_args;
 	unsigned char  log_time;
+	unsigned char  unix_show;
+	unsigned char  mac_show;
+	unsigned char  dos_show;
+	unsigned char  binary_show;
+	unsigned char  dummy_show;
 	FILE          *log_file;
 
 } options_st;
