@@ -41,7 +41,7 @@ static void freport (const char *prefix, const char *err, va_list params) {
 
 static void die_func (const char *err, va_list params) {
 
-	freport ("FATAL ", err, params);
+	freport ("FATAL : ", err, params);
 	exit (128);
 
 }
@@ -51,7 +51,7 @@ void trace (const char *trc, ...) {
 
 	va_list params;
 	va_start (params, trc);
-	freport ("TRACE ",trc, params);
+	freport ("TRACE : ",trc, params);
 	va_end (params);
 
 }
@@ -63,7 +63,7 @@ void trace_verbose (const char *trc, ...) {
 	if (dumconfig->verbose) {
 		va_list params;
 		va_start (params, trc);
-		freport ("TRVRB ",trc, params);
+		freport ("TRVRB : ",trc, params);
 		va_end (params);
 	}
 

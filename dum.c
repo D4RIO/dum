@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #define CMD_MAX        512
-#define TAM_LINEA      4096
+#define TAM_LINE       4096
 #define EOL_CR         0x0D
 #define EOL_LF         0x0A
 #define FMT_LINEA_UNIX "%s\x0A"
@@ -39,7 +39,6 @@ static const char usage_str[]=\
 "  'knife' commands (at the end):\n"
 "     to unix          rewrite input files using UNIX LF byte\n"
 "     to dos           rewrite input files using DOS/WINDOWS CR+LF bytes\n"
-"     to mac           rewrite input files using MAC's CR byte\n"
 "     show             for each input file, shows line ending style or 'BIN'\n\n"
 "each command can also define a 'help' function,\n"
 "so you can shoot your 'dum show help' to know wth\n"
@@ -57,7 +56,7 @@ typedef struct nd {
 	unsigned long int crlf;
 } numeric_data;
 
-void cambiar_fin_linea (char * buffer_linea);
+void delete_lineend(char * buffer);
 int  analyze_file (FILE *file_to_read,numeric_data *totals);
 int  is_regfile (const char *fname);
 
@@ -268,36 +267,114 @@ void cmdshow( int *a, char ***b ) {
 
 }
 
-/* NEXT ADD
+
 void cmdto( int *a, char ***b ) {
 
-	char tmp_file[4096];
+	char tmp_file_name[4096];
+	char buffer[TAM_LINE];
 	int  app_me;
+	register int i;
 	struct stat stbuf;
+	FILE *tmp_file;
+	FILE *input_file;
+	char output_type=0;
 
-	(*a)--;(*b)++;
+	enum LineEnd { UNIX='u',MAC='m',DOS='d' };
+
+	(*a)--;(*b)++; // to
 
 	if (!a||!*b||!**b)
-		die("invalid set usage!");
+		die("invalid 'to' usage!");
 
-	memset(tmp_file,0,4096);
-	sprintf(tmp_file,"/tmp/dumtemp%d.txt",app_me);
+	/* sets conversion type */
+	if (!strcmp(**b,"unix"))
+		output_type = 'u';
+	else if (!strcmp(**b,"mac"))
+		output_type = 'm';
+	else if (!strcmp(**b,"dos") || !strcmp(**b,"windows"))
+		output_type = 'd';
+	else
+		die("invalid 'to' usage!");
 
-	for (app_me=0;stat(tmp_file,&stbuf) && app_me>=0;app_me++) {
+	(*a)--;(*b)++; // type
 
-		memset(tmp_file,0,4096);
-		sprintf(tmp_file,"/tmp/dumtemp%d.txt",app_me);
 
+
+	/* for each file... */
+	for (i=0;i<(*a);i++) {
+
+
+		/* defines tempname
+		*/
+		memset(tmp_file_name,0,4096);
+		sprintf(tmp_file_name,"/tmp/dumtemp%d.txt",app_me);
+		for (app_me=0;stat(tmp_file_name,&stbuf)==0 && app_me>=0;app_me++) {
+
+			memset(tmp_file_name,0,4096);
+			sprintf(tmp_file_name,"/tmp/dumtemp%d.txt",app_me);
+
+		}
+		if (app_me<0)
+			die("OMG! How many temp files do you have? ... see /tmp/dumtemp*.txt");
+
+
+
+		/* open tmp_file and input */
+		tmp_file=fopen( tmp_file_name, "w" );
+		if (!tmp_file)
+			die( "I cannot open %s!\n",tmp_file_name);
+		input_file = fopen((*b)[i],"r");
+		if (!input_file)
+			die( "I cannot open %s!\n",(*b)[i]);
+
+		/* Trace if verbose
+		*/
+		if (dumconfig->verbose) {
+			switch( output_type ){
+				case UNIX:
+					trace( "(TO UNIX) %s", (*b)[i] );
+					break;
+				case DOS:
+					trace( "(TO DOS)  %s", (*b)[i] );
+					break;
+				default:
+					die("not a valid conversion\n");
+			}
+		}
+
+		/* read... */
+		memset(buffer,0,TAM_LINE);
+		while( fgets(buffer,TAM_LINE,input_file) ){
+
+			delete_lineend(buffer);
+
+			/* escribimos la linea al archivo de salida */
+			switch( output_type ){
+				case UNIX:
+					fprintf( tmp_file, FMT_LINEA_UNIX, buffer );
+					break;
+				case DOS:
+					fprintf( tmp_file, FMT_LINEA_DOS, buffer );
+					break;
+			}
+			memset(buffer,0,TAM_LINE);
+		}
+
+		/* close files */
+		fclose(input_file);
+		fclose(tmp_file);
+
+		/* reutilizamos el buffer de la linea para el comando que pone el
+		+  temporal en el archivo original
+		*/
+		sprintf( buffer, "mv %s %s", tmp_file_name, (*b)[i] );
+		if(system(buffer)){ die("Cannot move temporary file to the original one!\n"); }
 	}
 
-	if (app_me<0)
-		die("OMG! How many temp files do you have? ... see /tmp/dumtemp*.txt");
-
-	FILE *fstruct = fopen(temporal.buffer,"w");
-	analyze_file();
+	exit(0);
 
 }
-*/
+
 
 
 
@@ -316,6 +393,7 @@ static const struct cmdst commands[] = {
 	{ "verbose"            ,cmdverbose             },
 	{ "analyze"            ,cmdanalyze             },
 	{ "show"               ,cmdshow                },
+	{ "to"                 ,cmdto                  },
 	{ ""                   ,NULL                   }
 
 };
@@ -414,12 +492,12 @@ int main(int argc, char **argv) {
 
 
 
-void cambiar_fin_linea(char * buffer_linea) {
+void delete_lineend(char * buffer){
 
 	register int i=0;
-	while( buffer_linea[i]!=0 ){
+	while( buffer[i]!=0 ){
 
-		if( buffer_linea[i] == EOL_CR || buffer_linea[i] == EOL_LF ) buffer_linea[i]=0;
+		if( buffer[i] == EOL_CR || buffer[i] == EOL_LF ) buffer[i]=0;
 		i++;
 
 	}
@@ -429,30 +507,30 @@ void cambiar_fin_linea(char * buffer_linea) {
 
 int analyze_file(FILE* file_to_read,numeric_data *totals) {
 
-	char buffer_line[TAM_LINEA];
-	memset(buffer_line, 0, TAM_LINEA);
+	char buffer[TAM_LINE];
+	memset(buffer, 0, TAM_LINE);
 	totals->crlf=0L;
 	totals->cr  =0L;
 	totals->lf  =0L;
 
 	/* read file */
-	while( fgets(buffer_line,TAM_LINEA,file_to_read) ){
+	while( fgets(buffer,TAM_LINE,file_to_read) ){
 
 		register int i=0;
-		while( buffer_line[i] ){
+		while( buffer[i] ){
 
-			if     ( buffer_line[i]==EOL_CR && buffer_line[i+1]==EOL_LF ) {
+			if     ( buffer[i]==EOL_CR && buffer[i+1]==EOL_LF ) {
 				totals->crlf++;
 				i++;
-			}else if( buffer_line[i]==EOL_CR ){
+			}else if( buffer[i]==EOL_CR ){
 				totals->cr++;
-			}else if( buffer_line[i]==EOL_LF ){
+			}else if( buffer[i]==EOL_LF ){
 				totals->lf++;
 			}
 
 			i++;
 		}
-		memset(buffer_line,0,TAM_LINEA);
+		memset(buffer,0,TAM_LINE);
 	}
 
 	return 0;
