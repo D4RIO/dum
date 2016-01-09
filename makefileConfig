@@ -4,8 +4,7 @@ UTILS_QUIET:=@
 
 #======================================================================
 CFLAGS= \
-	-Wall -I./ \
-	-gstabs
+	-Wall -I./
 CC=$(COMPILER_QUIET)gcc $(CFLAGS)
 CCMESG=$(UTILS_QUIET) echo *\ \ CC
 
@@ -30,4 +29,3 @@ INSTALL=$(UTILS_QUIET)install
 INSTALLMESG=$(UTILS_QUIET) echo *\ \ INSTALLING
 
 GENMESG=$(UTILS_QUIET) echo *\ \ GENERATING
-

@@ -1,1 +1,0 @@
-dstring.o: dstring.c

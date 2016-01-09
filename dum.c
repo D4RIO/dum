@@ -1,3 +1,30 @@
+/**
+ * ---------------------------------------------------------------------------
+ * Copyright (c) 2010,2016
+ *                       Rodriguez Dario Andres, All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *  * Redistributions of source code must retain the above copyright notice,
+ *  this list of conditions and the following disclaimer.
+ *
+ *  * Redistributions in binary form must reproduce the above copyright notice,
+ *  this list of conditions and the following disclaimer in the documentation
+ *  and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * ---------------------------------------------------------------------------
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -8,7 +35,7 @@
 #include <unistd.h>
 
 #define CMD_MAX        512
-#define LINE_SIZE       4096
+#define LINE_SIZE      4096
 #define EOL_CR         0x0D
 #define EOL_LF         0x0A
 #define FMT_LINE_UNIX "%s\x0A"
@@ -20,7 +47,6 @@
 #define COLORFUL_BOLD  dumconfig->colorful?"\033[1m":""
 #define NOVBREAK       (dumconfig->verbose&&(sum>0L))?"":"\n"
 
-#include "dstring.h"
 #include "messages.h"
 #include "version.h"
 
@@ -36,10 +62,13 @@ static const char usage_str[]=\
 "     verbose          sets verbose mode on -same as 'v' flag-\n"
 "     showtime         sets date/time tracing on log strings (not all output)\n"
 "     colorful         sets colorful mode on -same as 'c' flag and pretty-\n"
-"     show             selects what line ending style(s) should be used\n"
+"     show             selects what line ending(s) should be used (dos/unix/mac)\n"
+"\n"
+"                      example: find . -print | xargs dum show dos analyze\n"
 "\n"
 "  'knife' commands (at the end) :\n"
-"     analyze          analyzes the file or shows line ending style (affected by 'show')"
+"     analyze          analyzes the file and shows line ending style\n"
+"                      (this is affected by 'show')\n"
 "     to unix          rewrites input files using UNIX LF byte\n"
 "     to dos           rewrites input files using DOS/WINDOWS CR+LF bytes\n"
 "\n"
@@ -48,14 +77,19 @@ static const char usage_str[]=\
 "     -h               same as 'help'\n"
 "     -c               same as 'colorful'\n"
 "     -t               same as 'showtime'\n"
-"     --               stop processing flags ¿something new? Well, you can\n"
+"     --               stop processing flags, something new? Well, you can\n"
 "                      just say: 'dum -vct-' and it's the same as 'dum -vct --'\n"
 "\n"
-"Use it with shell wildcards, your friend the 'find' command, shellscripts and beer\n"
+"Examples of massive usage:\n"
 "\n"
-"  dum 'papercut' written by Rodriguez Dario A\n"
+"   find /some/src -type f -a -name \"Makefile\" | xargs dum to unix\n"
+"   find / -type f | xargs dum colorful analyze\n"
 "\n"
-"bugs and suggestions to <rda@openmailbox.org>"
+"Use it with the 'find' command, shellscripts and beer, dum is free\n"
+"\n"
+"   dum 'papercut' written by Rodriguez Dario A\n"
+"\n"
+"Please send bugs and suggestions to <rda@openmailbox.org>"
 "\n"
 "Copyright (C) 2010,2015,2016, Dario A. Rodriguez";
 
