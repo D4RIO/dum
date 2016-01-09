@@ -15,6 +15,8 @@ EOT
 
 TAG=`git tag | grep "^v" | tail -1`
 
+echo "selected version number: $TAG"
+
 if test -z "$TAG"
 then
 	echo "#define VERSION_NO \"vX.X\"" >> version.h
@@ -27,4 +29,7 @@ cat << EOT >> version.h
 #endif
 EOT
 
+else
+	echo "version.h already exists"
+	echo "delete it to replace"
 fi
