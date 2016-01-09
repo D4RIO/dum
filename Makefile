@@ -13,8 +13,6 @@
 # BEGIN OBJECT HANDLING _________________
 include makefileConfig
 
-
-#API DSTRING DOC IN DOCS/API-DSTRING.TXT (If any)
 APIS_OBJ=\
 	messages.o
 
@@ -41,5 +39,5 @@ dum: $(OBJECTS)
 	$(CC) -o dum $(OBJECTS)
 
 clean::
-	$(RMMESG) *.o dum *~ *.bak *.bkp
-	$(RM) *.o dum *~ *.bak *.bkp
+	$(RMMESG) *.o dum *~ *.bak *.bkp \#*
+	$(RM) *.o dum *~ *.bak *.bkp \#*
