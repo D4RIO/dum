@@ -87,7 +87,7 @@ static const char usage_str[]=\
 "\n"
 "Use it with the 'find' command, shellscripts and beer, dum is free\n"
 "\n"
-"   dum 'papercut' written by Rodriguez Dario A\n"
+"   dum 'scissor hand' written by Rodriguez Dario A\n"
 "\n"
 "Please send bugs and suggestions to <rda@openmailbox.org>"
 "\n"
