@@ -120,7 +120,6 @@ typedef struct options_st {
 	unsigned char  dos_show;
 	unsigned char  binary_show;
 	unsigned char  dummy_show;
-	FILE          *log_file;
 
 } options_st;
 
@@ -141,7 +140,6 @@ options_build(options_st *ref)
 	ref->dos_show     = 1;
 	ref->binary_show  = 1;
 	ref->dummy_show   = 1;
-	ref->log_file     = NULL;
 }
 
 
@@ -157,7 +155,6 @@ options_reset(options_st *ref)
 	ref->dos_show     = 1;
 	ref->binary_show  = 1;
 	ref->dummy_show   = 1;
-	ref->log_file     = NULL;
 }
 
 
