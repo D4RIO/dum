@@ -62,36 +62,38 @@ static const char usage_str[]=\
 "     verbose          sets verbose mode on -same as 'v' flag-\n"
 "     showtime         sets date/time tracing on log strings (not all output)\n"
 "     colorful         sets colorful mode on -same as 'c' flag and pretty-\n"
-"     show             selects what line ending(s) should be used (dos/unix/mac)\n"
+"     pretty           see colorful\n"
+"     show             selects what line ending(s) should be seen (dos/unix/mac,\n"
+"                      also 'bin' when a file has several types of line ends,\n"
+"                      'dummy' if no line endings at all, and 'all' to set \n"
+"                      everything on, also 'all' is the default)\n"
 "\n"
-"                      example: find . -print | xargs dum show dos analyze\n"
+"                      example: find . -print0 | xargs -0 dum show dos analyze\n"
 "\n"
-"  'knife' commands (at the end) :\n"
+"  knife commands (at the end) :\n"
 "     analyze          analyzes the file and shows line ending style\n"
 "                      (this is affected by 'show')\n"
 "     to unix          rewrites input files using UNIX LF byte\n"
 "     to dos           rewrites input files using DOS/WINDOWS CR+LF bytes\n"
 "\n"
-"flags are easy to understand:\n"
+"  flags are easy to understand:\n"
 "     -v               same as 'verbose'...\n"
 "     -h               same as 'help'\n"
 "     -c               same as 'colorful'\n"
 "     -t               same as 'showtime'\n"
-"     --               stop processing flags, something new? Well, you can\n"
-"                      just say: 'dum -vct-' and it's the same as 'dum -vct --'\n"
+"     --               stop processing flags, you can also just say:\n"
+"                      'dum -vct-' and it's the same as 'dum -vct --'\n"
 "\n"
 "Examples of massive usage:\n"
 "\n"
 "   find /some/src -type f -a -name \"Makefile\" | xargs dum to unix\n"
 "   find / -type f | xargs dum colorful analyze\n"
 "\n"
-"Use it with the 'find' command, shellscripts and beer, dum is free\n"
+"   dum written by Rodriguez Dario A\n"
 "\n"
-"   dum 'scissor hand' written by Rodriguez Dario A\n"
+"Please send bugs and suggestions to <rodriguez.dario.a@gmail.com>"
 "\n"
-"Please send bugs and suggestions to <rda@openmailbox.org>"
-"\n"
-"Copyright (C) 2010,2015,2016, Dario A. Rodriguez";
+"Copyright (C) 2010,2015,2016,2020 Dario A. Rodriguez";
 
 
 typedef struct nd {
@@ -182,7 +184,7 @@ void
 cmdhelp(int *a, char ***b)
 {
 	if ( !a && b && **b )
-		die("invalid command '%s'... see 'help', ok?", **b);
+		die("invalid command '%s'... see 'help'", **b);
 	else
 		printf("usage:\n\n    %s\n", usage_str);
 	exit(0);
@@ -246,7 +248,7 @@ cmdanalyze(int *a, char ***b)
 		  (totals.lf  ==0L) &&
 		  (totals.crlf==0L) &&
 		  dumconfig->mac_show)
-		printf("%sMAC        %s %s\n",
+		printf("%sMAC         %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
@@ -254,7 +256,7 @@ cmdanalyze(int *a, char ***b)
 			   (totals.lf   >0L) &&
 			   (totals.crlf==0L) &&
 			   dumconfig->unix_show)
-		printf("%sUNIX       %s %s\n",
+		printf("%sUNIX        %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
@@ -262,7 +264,7 @@ cmdanalyze(int *a, char ***b)
 			   (totals.lf  ==0L) &&
 			   (totals.crlf >0L) &&
 			   dumconfig->dos_show)
-		printf("%sDOS/WINDOWS%s %s\n",
+		printf("%sDOS/WINDOWS %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
@@ -270,12 +272,12 @@ cmdanalyze(int *a, char ***b)
 			   (totals.lf  ==0L) &&
 			   (totals.crlf==0L) &&
 			   dumconfig->dummy_show)
-		printf("%sNO-ENDS    %s %s\n",
+		printf("%sUNKNOWN     %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
 	  else if (dumconfig->binary_show)
-		printf("%sBINARY     %s %s\n",
+		printf("%sBINARY      %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
@@ -353,13 +355,13 @@ cmdto( int *a, char ***b )
 
   /* sets conversion type */
   if (!strcmp(**b,"unix"))
-	output_type = 'u';
+	output_type = UNIX;
 
   else if (!strcmp(**b,"mac"))
-	output_type = 'm';
+	output_type = MAC;
 
   else if (!strcmp(**b,"dos") || !strcmp(**b,"windows"))
-	output_type = 'd';
+	output_type = DOS;
 
   else
 	die("invalid 'to' usage!");
