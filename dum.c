@@ -113,7 +113,6 @@ typedef struct options_st {
 
 	unsigned char  verbose;
 	unsigned char  colorful;
-	unsigned char  parsing_args;
 	unsigned char  log_time;
 	unsigned char  unix_show;
 	unsigned char  mac_show;
@@ -133,7 +132,6 @@ options_build(options_st *ref)
 {
 	ref->verbose      = 0;
 	ref->colorful     = 0;
-	ref->parsing_args = 1;
 	ref->log_time     = 0;
 	ref->unix_show    = 1;
 	ref->mac_show     = 1;
@@ -148,7 +146,6 @@ options_reset(options_st *ref)
 {
 	ref->verbose      = 0;
 	ref->colorful     = 0;
-	ref->parsing_args = 1;
 	ref->log_time     = 0;
 	ref->unix_show    = 1;
 	ref->mac_show     = 1;
@@ -527,12 +524,14 @@ main(int argc, char **argv)
 	  if(!argc || !argv[0])
 		break;
 
-	  if (dumconfig->parsing_args && argv[0][0] == '-') {
+	  unsigned short int parsing_args;
+	  
+	  if (parsing_args && argv[0][0] == '-') {
 
 		for (j=1; j < strlen(argv[0]); j++)
 		  switch (argv[0][j]) {
 		  case '-':
-			dumconfig->parsing_args = 0;
+			parsing_args = 0;
 			break;
 		  case 'v':
 		  case 'V':
