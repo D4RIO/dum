@@ -334,7 +334,9 @@ cmdshow( int *a, char ***b )
 void
 cmdto( int *a, char ***b )
 {
-  char tmp_file_name[4096];
+  const int TMP_FILENAME_PATH_SIZE = 4096;
+
+  char tmp_file_name[TMP_FILENAME_PATH_SIZE];
   char buffer[LINE_SIZE];
   int  app_me;
   register int i;
@@ -372,13 +374,13 @@ cmdto( int *a, char ***b )
 	{
 
 	  /* defines tempname */
-	  memset(tmp_file_name, 0, 4096);
+	  memset(tmp_file_name, 0, TMP_FILENAME_PATH_SIZE);
 	  sprintf(tmp_file_name,"/tmp/dumtemp%d.txt",app_me);
 
 	  for (app_me = 0; stat(tmp_file_name,&stbuf) == 0 && app_me >= 0; app_me++)
 		{
-		  memset(tmp_file_name, 0, 4096);
-		  sprintf(tmp_file_name,"/tmp/dumtemp%d.txt",app_me);
+		  memset(tmp_file_name, 0, TMP_FILENAME_PATH_SIZE);
+		  snprintf(tmp_file_name, TMP_FILENAME_PATH_SIZE, "/tmp/dumtemp%d.txt", app_me);
 		}
 
 	  if (app_me < 0)
@@ -441,7 +443,7 @@ cmdto( int *a, char ***b )
 	  fclose(tmp_file);
 
 	  /* buffer gets recycled */
-	  sprintf( buffer, "mv %s %s", tmp_file_name, (*b)[i] );
+	  snprintf( buffer, LINE_SIZE,"mv %s %s", tmp_file_name, (*b)[i] );
 	  if(system(buffer)) {
 		die("Cannot move temporary file to the original one!\n");
 	  }
