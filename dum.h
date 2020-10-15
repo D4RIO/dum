@@ -26,28 +26,19 @@
  * ---------------------------------------------------------------------------
  */
 
-/* NOTE: You find a good reason NOT to write inside the header */
-
 #ifndef _DUM_MAIN_HEADER_
 #define _DUM_MAIN_HEADER_
 
-/* This is the global options memory space */
-typedef struct options_st {
-
-	unsigned char  verbose;
-	unsigned char  colorful;
-	unsigned char  parsing_args;
-	unsigned char  log_time;
-	unsigned char  unix_show;
-	unsigned char  mac_show;
-	unsigned char  dos_show;
-	unsigned char  binary_show;
-	unsigned char  dummy_show;
-	FILE          *log_file;
-
-} options_st;
+#define  VERBOSE_BIT      1
+#define  COLORFUL_BIT     2
+#define  LOG_TIME_BIT     4
+#define  UNIX_SHOW_BIT    8
+#define  MAC_SHOW_BIT     16
+#define  DOS_SHOW_BIT     32
+#define  BINARY_SHOW_BIT  64
+#define  DUMMY_SHOW_BIT   128
 
 /* and the symbol exported by dum.o */
-extern options_st *dumconfig;
+extern unsigned char options;
 
 #endif

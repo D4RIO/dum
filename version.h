@@ -5,6 +5,6 @@
 
 /* you can define your own version without git */
 #ifndef VERSION_NO
-#define VERSION_NO "v2.0"
+#define VERSION_NO "v2.1"
 #endif
 #endif

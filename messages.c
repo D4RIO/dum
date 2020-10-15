@@ -46,13 +46,10 @@ freport (const char *prefix, const char *err, va_list params)
   vsnprintf(msg, sizeof(msg), err, params);
 
 
-  if (dumconfig->log_file)
-	fptr = dumconfig->log_file;
-  else
-	fptr = stderr;
+  fptr = stderr;
 
 
-  if (dumconfig->log_time)
+  if (options & LOG_TIME_BIT)
 	fprintf (fptr, "%02d/%02d/%02d %02d:%02d:%02d - %s%s\n",
 			 timeinfo->tm_mday, timeinfo->tm_mon+1, timeinfo->tm_year+1900,
 			 timeinfo->tm_hour, timeinfo->tm_min,  timeinfo->tm_sec,
@@ -85,7 +82,7 @@ trace (const char *trc, ...)
 void
 trace_verbose (const char *trc, ...)
 {
-	if (dumconfig->verbose) {
+	if (options & VERBOSE_BIT) {
 		va_list params;
 		va_start (params, trc);
 		freport ("TRVRB : ",trc, params);
