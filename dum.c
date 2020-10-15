@@ -34,6 +34,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/* SELF */
+#include "dum.h"
+
 #define CMD_MAX        512
 #define LINE_SIZE      4096
 #define EOL_CR         0x0D
@@ -41,11 +44,11 @@
 #define FMT_LINE_UNIX "%s\x0A"
 #define FMT_LINE_MAC  "%s\x0D"
 #define FMT_LINE_DOS  "%s\x0D\x0A"
-#define COLORFUL_BLUE  dumconfig->colorful?"\033[34m":""
-#define COLORFUL_RED   dumconfig->colorful?"\033[31m":""
-#define COLORFUL_DEF   dumconfig->colorful?"\033[0m":""
-#define COLORFUL_BOLD  dumconfig->colorful?"\033[1m":""
-#define NOVBREAK       (dumconfig->verbose&&(sum>0L))?"":"\n"
+#define COLORFUL_BLUE  (options & COLORFUL_BIT)?"\033[34m":""
+#define COLORFUL_RED   (options & COLORFUL_BIT)?"\033[31m":""
+#define COLORFUL_DEF   (options & COLORFUL_BIT)?"\033[0m":""
+#define COLORFUL_BOLD  (options & COLORFUL_BIT)?"\033[1m":""
+#define NOVBREAK       ((options & VERBOSE_BIT)&&(sum>0L))?"":"\n"
 
 #include "messages.h"
 #include "version.h"
@@ -70,7 +73,7 @@ static const char usage_str[]=\
 "\n"
 "                      example: find . -print0 | xargs -0 dum show dos analyze\n"
 "\n"
-"  knife commands (at the end) :\n"
+"  action commands (at the end) :\n"
 "     analyze          analyzes the file and shows line ending style\n"
 "                      (this is affected by 'show')\n"
 "     to unix          rewrites input files using UNIX LF byte\n"
@@ -91,6 +94,8 @@ static const char usage_str[]=\
 "\n"
 "   dum written by Rodriguez Dario A\n"
 "\n"
+"NOTE: If you don't use action commands, dum will do nothing.\n"
+"\n"
 "Please send bugs and suggestions to <rodriguez.dario.a@gmail.com>"
 "\n"
 "Copyright (C) 2010,2015,2016,2020 Dario A. Rodriguez";
@@ -108,51 +113,8 @@ int  analyze_file(FILE *file_to_read, numeric_data *totals);
 int  is_regfile(const char *fname);
 
 
-/* structure to save global configuration data and functions */
-typedef struct options_st {
-
-	unsigned char  verbose;
-	unsigned char  colorful;
-	unsigned char  log_time;
-	unsigned char  unix_show;
-	unsigned char  mac_show;
-	unsigned char  dos_show;
-	unsigned char  binary_show;
-	unsigned char  dummy_show;
-
-} options_st;
-
-
-/* initialised (null) pointer */
-options_st *dumconfig = NULL;
-
-
-void
-options_build(options_st *ref)
-{
-	ref->verbose      = 0;
-	ref->colorful     = 0;
-	ref->log_time     = 0;
-	ref->unix_show    = 1;
-	ref->mac_show     = 1;
-	ref->dos_show     = 1;
-	ref->binary_show  = 1;
-	ref->dummy_show   = 1;
-}
-
-
-void
-options_reset(options_st *ref)
-{
-	ref->verbose      = 0;
-	ref->colorful     = 0;
-	ref->log_time     = 0;
-	ref->unix_show    = 1;
-	ref->mac_show     = 1;
-	ref->dos_show     = 1;
-	ref->binary_show  = 1;
-	ref->dummy_show   = 1;
-}
+/* byte to save global configuration data and functions */
+unsigned char options = '\0';
 
 
 typedef struct cmdst {
@@ -189,7 +151,7 @@ void
 cmdverbose(int *a, char ***b)
 {
 	(*a)--;(*b)++;
-	dumconfig->verbose = 1;
+	options |= VERBOSE_BIT;
 }
 
 
@@ -197,7 +159,7 @@ void
 cmdcolorful(int *a, char ***b)
 {
 	(*a)--;(*b)++;
-	dumconfig->colorful = 1;
+	options |= COLORFUL_BIT;
 }
 
 
@@ -205,7 +167,7 @@ void
 cmdshowtime(int *a, char ***b)
 {
 	(*a)--;(*b)++;
-	dumconfig->log_time = 1;
+	options |= LOG_TIME_BIT;
 }
 
 
@@ -217,6 +179,8 @@ cmdanalyze(int *a, char ***b)
   numeric_data totals;
 
   (*a)--; (*b)++;
+
+  trace_verbose ("Starting analyze");
 
   if (!a || !*b || !**b)
 	die("invalid analyze usage!");
@@ -239,38 +203,38 @@ cmdanalyze(int *a, char ***b)
 
 	  /* print the report line*/
 	  if ((totals.cr   >0L) &&
-		  (totals.lf  ==0L) &&
-		  (totals.crlf==0L) &&
-		  dumconfig->mac_show)
+	      (totals.lf  ==0L) &&
+	      (totals.crlf==0L) &&
+	      (options & MAC_SHOW_BIT))
 		printf("%sMAC         %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
 	  else if ((totals.cr  ==0L) &&
-			   (totals.lf   >0L) &&
-			   (totals.crlf==0L) &&
-			   dumconfig->unix_show)
+		   (totals.lf   >0L) &&
+		   (totals.crlf==0L) &&
+		   (options & UNIX_SHOW_BIT))
 		printf("%sUNIX        %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
 	  else if ((totals.cr  ==0L) &&
-			   (totals.lf  ==0L) &&
-			   (totals.crlf >0L) &&
-			   dumconfig->dos_show)
+		   (totals.lf  ==0L) &&
+		   (totals.crlf >0L) &&
+		   (options & DOS_SHOW_BIT))
 		printf("%sDOS/WINDOWS %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
 	  else if ((totals.cr  ==0L) &&
-			   (totals.lf  ==0L) &&
-			   (totals.crlf==0L) &&
-			   dumconfig->dummy_show)
+		   (totals.lf  ==0L) &&
+		   (totals.crlf==0L) &&
+		   (options & DUMMY_SHOW_BIT))
 		printf("%sUNKNOWN     %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
 			   (*b)[i]);
-	  else if (dumconfig->binary_show)
+	  else if (options & BINARY_SHOW_BIT)
 		printf("%sBINARY      %s %s\n",
 			   COLORFUL_BOLD,
 			   COLORFUL_DEF,
@@ -280,6 +244,7 @@ cmdanalyze(int *a, char ***b)
 	  fclose (fstruct);
 
 	} /* end for */
+  trace_verbose ("Ending normally");
   exit(0);
 }
 
@@ -294,29 +259,35 @@ cmdshow( int *a, char ***b )
 	if (!a||!*b||!**b)
 		die("invalid show usage!");
 
-	dumconfig->unix_show   = 0;
-	dumconfig->dos_show    = 0;
-	dumconfig->mac_show    = 0;
-	dumconfig->binary_show = 0;
-	dumconfig->dummy_show  = 0;
+	unsigned char negative_mask = 0xFF;
+
+	/* set holes in the negative mask */
+	negative_mask ^= UNIX_SHOW_BIT;
+	negative_mask ^= DOS_SHOW_BIT;
+	negative_mask ^= MAC_SHOW_BIT;
+	negative_mask ^= BINARY_SHOW_BIT;
+	negative_mask ^= DUMMY_SHOW_BIT;
+
+	/* force bits to zero */
+	options &= negative_mask;
 
 	for (i=0; i < *a; i++) {
 		if (!strcmp((*b)[i], "unix"))
-			dumconfig->unix_show = 1;
+		  options |= UNIX_SHOW_BIT;
 		else if (!strcmp((*b)[i], "dos") || !strcmp((*b)[i],"windows"))
-			dumconfig->dos_show = 1;
+		  options |= DOS_SHOW_BIT;
 		else if (!strcmp((*b)[i], "mac"))
-			dumconfig->mac_show = 1;
+		  options |= MAC_SHOW_BIT;
 		else if (!strcmp((*b)[i], "bin"))
-			dumconfig->binary_show = 1;
+		  options |= BINARY_SHOW_BIT;
 		else if (!strcmp((*b)[i], "dummy"))
-			dumconfig->dummy_show = 1;
+		  options |= DUMMY_SHOW_BIT;
 		else if (!strcmp((*b)[i], "all")) {
-			dumconfig->unix_show   = 1;
-			dumconfig->dos_show    = 1;
-			dumconfig->mac_show    = 1;
-			dumconfig->binary_show = 1;
-			dumconfig->dummy_show  = 1;
+		  options |= UNIX_SHOW_BIT;
+		  options |= DOS_SHOW_BIT;
+		  options |= MAC_SHOW_BIT;
+		  options |= BINARY_SHOW_BIT;
+		  options |= DUMMY_SHOW_BIT;
 		} else if (!strcmp((*b)[i], "endshow")) {
 			(*a)--; (*b)++;
 			return;
@@ -345,6 +316,8 @@ cmdto( int *a, char ***b )
   enum LineEnd { UNIX='u', MAC='m', DOS='d' };
 
   (*a)--; (*b)++;
+
+  trace_verbose ("Starting to");
 
   if (!a||!*b||!**b)
 	die("invalid 'to' usage!");
@@ -399,7 +372,7 @@ cmdto( int *a, char ***b )
 
 
 	  /* Trace if verbose */
-	  if (dumconfig->verbose) {
+	  if (options & VERBOSE_BIT) {
 		switch( output_type ) {
 		case UNIX:
 		  trace( "(TO UNIX) %s", (*b)[i] );
@@ -446,6 +419,7 @@ cmdto( int *a, char ***b )
 	  }
 	}
 
+  trace_verbose ("Ending normally");
   exit(0);
 }
 
@@ -506,16 +480,16 @@ main(int argc, char **argv)
 
   int j;
 
-  /**
-   * Sets options global data structure
-   * as main() stack memory.
-   * Could be allocated in heap, but I like this way
-   */
-  options_st dumconfig_main;
-  dumconfig = &dumconfig_main;
-  options_build(&dumconfig_main);
+  options = '\0';
 
-  argv++; /* lost first */
+  /* default to show all */
+  options |= UNIX_SHOW_BIT;
+  options |= DOS_SHOW_BIT;
+  options |= MAC_SHOW_BIT;
+  options |= BINARY_SHOW_BIT;
+  options |= DUMMY_SHOW_BIT;
+
+  argv++; /* lose first */
   argc--;
 
   for (;;)
@@ -535,7 +509,7 @@ main(int argc, char **argv)
 			break;
 		  case 'v':
 		  case 'V':
-			dumconfig->verbose = 1;
+			options |= VERBOSE_BIT;
 			break;
 		  case 'h':
 		  case 'H':
@@ -543,11 +517,11 @@ main(int argc, char **argv)
 			break;
 		  case 'c':
 		  case 'C':
-			dumconfig->colorful = 1;
+			options |= COLORFUL_BIT;
 			break;
 		  case 't':
 		  case 'T':
-			dumconfig->log_time = 1;
+			options |= LOG_TIME_BIT;
 			break;
 		  default:
 			die("Bad option: %c (on %s)",
@@ -567,6 +541,7 @@ main(int argc, char **argv)
 	  }
 	}
 
+  trace_verbose ("Ending normally with no commands");
   return 0;
 }
 
